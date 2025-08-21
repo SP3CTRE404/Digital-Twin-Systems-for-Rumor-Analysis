@@ -49,8 +49,7 @@ Thumbs.db # Windows
 *.njsproj # Visual Studio
 *.sln # Visual Studio
 
-# Environment files
-.env
+.pdf
 
 #Other files
 *.zip
