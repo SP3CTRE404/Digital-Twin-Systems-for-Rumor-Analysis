@@ -1,0 +1,3 @@
+text,is_rumor,user.handle,topic,annotation,stance,sentiment,is_source_rumor,harmfulness_score,harmfulness_score_normalized
+Charlie Hebdo became well known for publishing the Muhammed cartoons two years ago,0.0,BBCDanielS,charliehebdo,True,support,positive,True,16.562351571008644,1.0
+Black teenage boys are not men. They are children. Stop referring to a 17 year old as a man. You are killing children. #ferguson,0.0,annaxsweat,ferguson,True,support,negative,True,15.409383534735863,0.0
