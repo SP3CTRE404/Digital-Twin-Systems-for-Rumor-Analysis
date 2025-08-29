@@ -35,6 +35,7 @@ data/*.csv #if you use CSVs
 
 # Saved models
 models/*
+results/*
 
 # OS generated files
 .DS_Store # macOS
