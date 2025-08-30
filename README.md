@@ -1,12 +1,12 @@
-Digital Twin System for Rumor Threat Analysis
-1. Project Objective
+# Digital Twin System for Rumor Threat Analysis
+### 1. Project Objective
 
 This project aims to develop an intelligent system capable of automatically assessing the potential threat of online rumors and misinformation. The core objective is to move beyond simple true/false detection and create a model that can provide a nuanced, quantitative harmfulness score for a given rumor. This score helps to prioritize moderation efforts, understand public reaction, and mitigate the real-world impact of fake news.
 
 The methodology is directly inspired by the research paper: "Harmfulness metrics in digital twins of social network rumors detection in cloud computing environment" by Li et al. (2024). We replicate the paper's novel two-stage training process to build a highly effective threat analysis model.
 
 The ultimate vision is to integrate this model into a Digital Twin of a social network environment. This would allow for real-time monitoring and simulation, enabling platform managers to predict the trajectory and potential damage of a rumor before it spreads widely.
-2. Project Roadmap & Current Status
+### 2. Project Roadmap & Current Status
 
 This project is divided into three distinct phases. We have successfully completed all data preparation and are currently in the model training phase.
 Phase 1: Data Preparation & Preprocessing (✅ Complete)
@@ -37,7 +37,7 @@ Phase 3: Integration & Application (Future Work)
 
     [⬜] Step 3.2: Digital Twin Integration: Integrate the inference pipeline into a dashboard or simulation environment to monitor rumor threats in real-time.
 
-3. How to Use This Repository
+### 3. How to Use This Repository
 3.1. Setup
 
     Clone the repository:
@@ -66,7 +66,7 @@ The project scripts should be run in the following order:
 
     Stage 2 - Fine-tuning (Coming soon): Run the fine-tuning script to train the final harmfulness prediction model.
 
-4. Key Technologies
+### 4. Key Technologies
 
     Programming Language: Python
 
@@ -78,7 +78,7 @@ The project scripts should be run in the following order:
 
     Libraries: VADER, SciPy, SentencePiece, Datasets
 
-5. Citation
+### 5. Citation
 
 This project's methodology is based on the findings from the following academic paper:
 
