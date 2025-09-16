@@ -52,7 +52,7 @@ Phase 3: Integration & Application (Future Work)
 
     Install dependencies:
 
-    pip install pandas vaderSentiment scipy torch scikit-learn transformers sentencepiece datasets
+    pip install pandas vaderSentiment scipy torch scikit-learn transformers sentencepiece datasets accelerate
 
 3.2. Running the Code
 
@@ -65,6 +65,48 @@ The project scripts should be run in the following order:
     python stage_1_pretraining.py
 
     Stage 2 - Fine-tuning (Coming soon): Run the fine-tuning script to train the final harmfulness prediction model.
+
+3.3. Sentiment Classification (Supervised)
+
+This repo includes a supervised sentiment classifier to predict the `sentiment` column in `datasets/final_rumor_dataset_for_training.csv`.
+
+Train:
+
+```bash
+python -m src.sentiment_training \\
+  --dataset datasets/final_rumor_dataset_for_training.csv \\
+  --text_col text \\
+  --label_col sentiment \\
+  --model distilbert \\
+  --epochs 3 \\
+  --batch_size 16 \\
+  --lr 5e-5 \\
+  --max_length 256 \\
+  --output_dir models/sentiment_model
+```
+
+Evaluation metrics (accuracy, macro-F1) are printed and the model/tokenizer are saved to `models/sentiment_model` along with a `label_mapping.json`.
+
+Inference example:
+
+```python
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import torch
+
+model_dir = "models/sentiment_model"
+tokenizer = AutoTokenizer.from_pretrained(model_dir)
+model = AutoModelForSequenceClassification.from_pretrained(model_dir)
+
+texts = ["I love this!", "This is terrible.", "It's okay, I guess."]
+enc = tokenizer(texts, padding=True, truncation=True, max_length=256, return_tensors="pt")
+with torch.no_grad():
+    logits = model(**enc).logits
+pred = logits.argmax(dim=-1).cpu().numpy()
+id_to_label = {int(k): v for k, v in model.config.id2label.items()}
+print([id_to_label[int(i)] for i in pred])
+```
+
+Note: The script infers label mapping from dataset values (e.g., `positive/neutral/negative`). Ensure the dataset has `text` and `sentiment` columns.
 
 ### 4. Key Technologies
 

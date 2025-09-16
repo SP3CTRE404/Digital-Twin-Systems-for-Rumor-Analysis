@@ -1,6 +1,10 @@
+import os
 import pandas as pd
-# Load the cleaned dataset
-df = pd.read_csv('CleanDataset.csv')
+# Load the cleaned dataset from datasets folder
+DATASETS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'datasets')
+INPUT_PATH = os.path.join(DATASETS_DIR, 'CleanDataset.csv')
+OUTPUT_PATH = os.path.join(DATASETS_DIR, 'AnnotatedDataset.csv')
+df = pd.read_csv(INPUT_PATH)
 def annotate_rumor(is_rumor_value, string=True):
     """
     Annotates a rumor based on its 'is_rumor' value.
@@ -28,8 +32,8 @@ def annotate_rumor(is_rumor_value, string=True):
 # Apply the function to create the new 'annotation' column
 df['annotation'] = df['is_rumor'].apply(annotate_rumor)
 
-# Save the annotated dataframe to a new CSV file
-df.to_csv('AnnotatedDataset.csv', index=False)
+# Save the annotated dataframe to a new CSV file under datasets folder
+df.to_csv(OUTPUT_PATH, index=False)
 
 # Display the first few rows of the annotated dataframe
 print("Annotation complete. The first 5 rows of the annotated dataset are:")
