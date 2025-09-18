@@ -9,7 +9,7 @@ The ultimate vision is to integrate this model into a Digital Twin of a social n
 ### 2. Project Roadmap & Current Status
 
 This project is divided into three distinct phases. We have successfully completed all data preparation and are currently in the model training phase.
-Phase 1: Data Preparation & Preprocessing (✅ Complete)
+Phase 1: Data Preparation & Preprocessing (✅ Completed)
 
 This foundational phase focused on transforming the raw PHEME dataset into a structured format suitable for our advanced two-stage training methodology.
 
@@ -23,17 +23,53 @@ This foundational phase focused on transforming the raw PHEME dataset into a str
 
     [✅] Step 1.5: Harmfulness Score Calculation: A final, normalized harmfulness score was calculated for each source rumor, based on the sentiment, stance, and propagation characteristics of its comment thread. This created the target label for our final model.
 
-Phase 2: Model Training (⏳ In Progress)
+Phase 2: Model Training (✅ Completed)
 
 This is the core machine learning phase where we build and train our prediction model.
 
-    [⏳] Step 2.1: Domain-Specific Pre-training: We are currently here. A google/flan-t5-small model is being pre-trained on the tasks of stance detection and sentiment analysis using all the prepared comment data. The goal is to create a model that understands the specific language and reaction patterns associated with rumors (i.e., "rumor propagation knowledge").
+    [✅] Step 2.1: Domain-Specific Pre-training: A `google/flan-t5-small` model was pre-trained on the tasks of stance detection and sentiment analysis using all the prepared comment data. This created a model that understands the specific language and reaction patterns associated with rumors (i.e., "rumor propagation knowledge").
 
-    [🔜] Step 2.2: Fine-tuning for Harmfulness Prediction: Once pre-training is complete, the knowledgeable model will be fine-tuned on the final, specific task: predicting the harmfulness_score for the source rumors.
+    [✅] Step 2.2: Fine-tuning for Harmfulness Prediction: The pre-trained model was then fine-tuned on the final, specific task: predicting the `harmfulness_score` for the source rumors. This resulted in our final threat analysis model.
 
-Phase 3: Integration & Application (Future Work)
+Phase 3: Integration & Application (⏳ In Progress)
 
-    [⬜] Step 3.1: Model Inference Pipeline: Develop a script or API endpoint that can take new, unseen rumor text and use the trained model to output a harmfulness score.
+    [✅] Step 3.1: Model Inference Pipeline: A script has been developed that takes new, unseen rumor text and its associated comments to output a detailed harmfulness score and analysis.
+
+    Related output:-
+    Testing Enhanced Harmfulness Scoring System
+    ============================================================
+    Using device: cuda
+    Loading sentiment model from: models\sentiment_model
+    [OK] Sentiment model loaded: ['negative', 'neutral', 'positive']
+    Loading stance model from: models\stance_model
+    [OK] Stance model loaded: ['deny', 'support']
+    Analyzing 8 comments for harmfulness...
+    Predicting sentiments...
+    Predicting stances...
+    Calculating harmfulness components...
+    Topic: chemical_spill_alert
+    Source Rumor: BREAKING: Major chemical spill at downtown facility, evacuate immediately!
+    
+    HARMFULNESS ANALYSIS:
+    Raw Score: 0.568
+    Normalized Score: 56.8/100
+    Interpretation: High (45-60): High harm potential. Active monitoring recommended.
+    Total Comments: 8
+    
+    COMPONENT BREAKDOWN:
+    • Sentimentality (R_c): 0.857
+    • Approval (R_r): 0.750
+    • Organization (R_o): 0.155
+    • Engagement: 0.200
+    • Controversy: 0.468
+    
+    DISTRIBUTIONS:
+    Sentiments: {'negative': 6, 'positive': 1, 'neutral': 1}
+    Stances: {'support': 6, 'deny': 2}
+    
+    MODEL STATUS:
+    Sentiment Model: ✅ Available
+    Stance Model: ✅ Available
 
     [⬜] Step 3.2: Digital Twin Integration: Integrate the inference pipeline into a dashboard or simulation environment to monitor rumor threats in real-time.
 
@@ -63,6 +99,10 @@ The project scripts should be run in the following order:
     Stage 1 - Pre-training: Run the model pre-training script. This will generate the rumor_knowledge_model.
 
     python stage_1_pretraining.py
+
+    Harmfulness Analysis: Run the inference script to analyze a rumor.
+
+    python run_harmfulness_analysis.py
 
     Stage 2 - Fine-tuning (Coming soon): Run the fine-tuning script to train the final harmfulness prediction model.
 
@@ -110,13 +150,13 @@ Note: The script infers label mapping from dataset values (e.g., `positive/neutr
 
 ### 4. Key Technologies
 
-    Programming Language: Python
+    - Programming Language: Python
 
     Data Manipulation: Pandas
 
     Machine Learning: PyTorch, Scikit-learn
 
-    NLP Model: Hugging Face Transformers (T5)
+    NLP Model: Hugging Face Transformers (DistilBERT)
 
     Libraries: VADER, SciPy, SentencePiece, Datasets
 
