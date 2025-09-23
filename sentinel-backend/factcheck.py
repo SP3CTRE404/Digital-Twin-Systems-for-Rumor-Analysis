@@ -22,9 +22,10 @@ def get_veracity_score(claim: str, api_key: Optional[str] = None, timeout_s: flo
     if not claim or not claim.strip():
         return 0.5
 
-    # Read from function arg or environment variable FACTCHECK_API_KEY
-    key = api_key or os.getenv("FACTCHECK_API_KEY")
-    if not key:
+    # Read from function arg or environment variable GOOGLE_FACTCHECK_API_KEY
+    key = api_key or os.getenv("GOOGLE_FACTCHECK_API_KEY")
+    if not key or key == "your_api_key_here":
+        print("Warning: Google Factcheck API key not configured")
         return 0.5
 
     try:

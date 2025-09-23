@@ -165,3 +165,50 @@ Note: The script infers label mapping from dataset values (e.g., `positive/neutr
 This project's methodology is based on the findings from the following academic paper:
 
     Li, H., Yang, W., Wang, W. et al. Harmfulness metrics in digital twins of social network rumors detection in cloud computing environment. J Cloud Comp 13, 36 (2024). https://doi.org/10.1186/s13677-024-00596-x
+
+## Recent fixes & troubleshooting (important)
+
+I ran through the repository and made a few small but important fixes to make the inference pipeline more robust when loading local Hugging Face model folders. If you've been seeing errors like "model not found" or Unicode/encoding errors on Windows, read this section.
+
+- Model path resolution: `src/harm_score.py` now resolves model folders relative to the repository `models/` directory when no explicit path is provided. This avoids issues caused by fragile relative paths when running scripts from different CWDs.
+
+- Diagnostic output: When a model fails to load, the code will now print the contents of the model directory to help diagnose missing files. If the model weights are in `.safetensors` format the script will mention that and recommend installing the `safetensors` package.
+
+- Windows console encoding: Some earlier print statements used emoji characters which caused a UnicodeEncodeError on Windows consoles that use cp1252. These have been replaced with simple ASCII prefixes like `[OK]`, `[WARN]`, `[ERROR]` to ensure printing never crashes.
+
+Common resolutions:
+
+- "Model not found" or missing files: Ensure your model directory (for example `models/sentiment_model_3050`) contains at least a `config.json`, tokenizer files (e.g., `tokenizer.json`, `tokenizer_config.json`), and model weights (`pytorch_model.bin` or `model.safetensors`).
+
+- If weights are `.safetensors` and you see errors loading them, install the safetensors package:
+
+```powershell
+pip install safetensors
+```
+
+- If you still see missing-file errors, run the small smoke test to print diagnostics (run from the repository root):
+
+```powershell
+python - <<'PY'
+import sys
+sys.path.append(r"./src")
+from harm_score import EnhancedHarmfulnessScorer
+scorer = EnhancedHarmfulnessScorer()
+print('Sentiment model available:', scorer.sentiment_model is not None)
+print('Stance model available:', scorer.stance_model is not None)
+PY
+```
+
+If the above prints directory listings mentioning `.safetensors`, follow the safetensors installation step. If model files are missing, re-export the model from training or copy the correct model folder into `models/`.
+
+If you want to point to a custom model location use explicit paths when constructing the class or running your scripts, for example:
+
+```python
+from src.harm_score import EnhancedHarmfulnessScorer
+scorer = EnhancedHarmfulnessScorer(
+    sentiment_model_path=r"C:\path\to\your\sentiment_model",
+    stance_model_path=r"C:\path\to\your\stance_model"
+)
+```
+
+Credits: small runtime fixes were applied during a quick audit to improve local development and troubleshooting. If you'd like, I can also open a small PR that: (1) adds `safetensors` to `Requirements.txt`, (2) adds a one-line test script under `scripts/` for smoke-testing models, and (3) optionally replace emoji prints across the repo.

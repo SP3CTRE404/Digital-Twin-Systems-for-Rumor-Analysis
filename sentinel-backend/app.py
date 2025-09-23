@@ -30,13 +30,14 @@ def create_app() -> Flask:
     app.config["MODEL"] = load_model(os.getenv("MODEL_NAME"))
 
     # M2: Harm Engine (stance + sentiment classifiers)
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     stance_path = os.getenv(
         "STANCE_MODEL_PATH",
-        r"C:\Users\harsh\OneDrive\Desktop\m1\stance model",
+        os.path.join(base_dir, "models", "stance_model_3050"),
     )
     sentiment_path = os.getenv(
         "SENTIMENT_MODEL_PATH",
-        r"C:\Users\harsh\OneDrive\Desktop\m1\sentiment model",
+        os.path.join(base_dir, "models", "sentiment_model_3050"),
     )
     try:
         stance_tok = AutoTokenizer.from_pretrained(stance_path)
@@ -136,41 +137,57 @@ def create_app() -> Flask:
 
     @app.post("/analyze")
     def analyze() -> tuple[dict, int]:
-        payload = request.get_json(silent=True) or {}
-        text = payload.get("text", "").strip()
-        comments = payload.get("comments") or []
-        if not text:
-            return {"error": "Missing 'text'"}, 400
+        try:
+            payload = request.get_json()
+            if not payload:
+                return {"error": "Invalid JSON payload"}, 400
+                
+            text = payload.get("text", "").strip()
+            if not text:
+                return {"error": "Missing or empty 'text' field"}, 400
 
-        # M2: Harm Engine via EnhancedHarmfulnessScorer (uses stance + sentiment models)
-        scorer = EnhancedHarmfulnessScorer(
-            sentiment_model_path=os.getenv(
-                "SENTIMENT_MODEL_PATH", r"C:\Users\harsh\OneDrive\Desktop\m1\sentiment model"
-            ),
-            stance_model_path=os.getenv(
-                "STANCE_MODEL_PATH", r"C:\Users\harsh\OneDrive\Desktop\m1\stance model"
-            ),
-        )
-        # If no comments provided, analyze the single rumor text as a minimal thread
-        thread = comments if isinstance(comments, list) and comments else [{"text": text}]
-        harm_result = scorer.analyze_conversation_thread(thread, "rumor_thread")
-        harm_score = float(harm_result.get("harmfulness_score", 0.0))
+            comments = payload.get("comments") or []
+            if not isinstance(comments, list):
+                return {"error": "Comments must be an array"}, 400
 
-        # M3: Veracity via Fact Check API
-        veracity = float(get_veracity_score(text))
+            # M2: Harm Engine via EnhancedHarmfulnessScorer (uses stance + sentiment models)
+            try:
+                scorer = EnhancedHarmfulnessScorer(
+                    sentiment_model_path=os.getenv("SENTIMENT_MODEL_PATH"),
+                    stance_model_path=os.getenv("STANCE_MODEL_PATH"),
+                )
+            except Exception as e:
+                return {"error": f"Failed to initialize harm scorer: {str(e)}"}, 500
 
-        # M4: Threat = Harm * (1 - Veracity)
-        threat = round(harm_score * (1.0 - veracity), 3)
+            # If no comments provided, analyze the single rumor text as a minimal thread
+            thread = comments if comments else [{"text": text}]
+            try:
+                harm_result = scorer.analyze_conversation_thread(thread, "rumor_thread")
+                harm_score = float(harm_result.get("harmfulness_score", 0.0))
+            except Exception as e:
+                return {"error": f"Failed to analyze harmfulness: {str(e)}"}, 500
 
-        return jsonify(
-            {
-                "rumor": text,
-                "harm": harm_result,
-                "harm_score": round(harm_score, 3),
-                "veracity_score": round(veracity, 3),
-                "threat_score": threat,
-            }
-        ), 200
+            # M3: Veracity via Fact Check API
+            try:
+                veracity = float(get_veracity_score(text))
+            except Exception as e:
+                return {"error": f"Failed to check veracity: {str(e)}"}, 500
+
+            # M4: Threat = Harm * (1 - Veracity)
+            threat = round(harm_score * (1.0 - veracity), 3)
+
+            return jsonify(
+                {
+                    "rumor": text,
+                    "harm": harm_result,
+                    "harm_score": round(harm_score, 3),
+                    "veracity_score": round(veracity, 3),
+                    "threat_score": threat,
+                }
+            ), 200
+            
+        except Exception as e:
+            return {"error": f"Internal server error: {str(e)}"}, 500
 
     def _extract_subgraph_posted_loc(H):
         nodes_posted = [
@@ -226,12 +243,16 @@ def create_app() -> Flask:
             sorted_nodes = sorted(out_degs.items(), key=lambda x: x[1], reverse=True)
             seed_node = sorted_nodes[0][0] if sorted_nodes else random.choice(list(G.nodes()))
 
+        seed = data.get("seed")
+        if seed is None:
+            seed = random.randint(0, 100000)
+
         H = G.copy()
         sim = DigitalTwinSimulator(
             H,
             communities=communities,
             base_virality=float(os.getenv("DT_BASE_VIRALITY", "0.32")),
-            seed=42,
+            seed=seed,
         )
         sim.seed_rumor(seed_node, text, init_time=0.0, model_predictor=None)
         timeline = sim.step(

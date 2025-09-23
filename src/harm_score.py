@@ -76,8 +76,6 @@ class EnhancedHarmfulnessScorer:
                         self.id_to_stance = {int(k): v for k, v in label_info['id_to_label'].items()}
                 else:
                     self.id_to_stance = {int(k): v for k, v in self.stance_model.config.id2label.items()}
-
-                self.id_to_stance = {int(k): v for k, v in self.stance_model.config.id2label.items()}
                 print(f"[OK] Stance model loaded: {list(self.id_to_stance.values())}")
             except Exception as e:
                 print(f"[ERROR] Error loading stance model: {e}")
@@ -503,11 +501,11 @@ def test_enhanced_harmfulness_system():
     
     print(f"\nCOMPONENT BREAKDOWN:")
     components = result['components']
-    print(f"• Sentimentality (R_c): {components['rumor_sentimentality_R_c']:.3f}")
-    print(f"• Approval (R_r): {components['rumor_approval_R_r']:.3f}")
-    print(f"• Organization (R_o): {components['organization_score_R_o']:.3f}")
-    print(f"• Engagement: {components['engagement_score']:.3f}")
-    print(f"• Controversy: {components['controversy_score']:.3f}")
+    print(f"- Sentimentality (R_c): {components['rumor_sentimentality_R_c']:.3f}")
+    print(f"- Approval (R_r): {components['rumor_approval_R_r']:.3f}")
+    print(f"- Organization (R_o): {components['organization_score_R_o']:.3f}")
+    print(f"- Engagement: {components['engagement_score']:.3f}")
+    print(f"- Controversy: {components['controversy_score']:.3f}")
     
     print(f"\nDISTRIBUTIONS:")
     print(f"Sentiments: {components['sentiment_distribution']}")
@@ -515,8 +513,8 @@ def test_enhanced_harmfulness_system():
     
     print(f"\nMODEL STATUS:")
     model_info = result['model_info']
-    print(f"Sentiment Model: {'✅ Available' if model_info['sentiment_model_available'] else '❌ Using fallback'}")
-    print(f"Stance Model: {'✅ Available' if model_info['stance_model_available'] else '❌ Using fallback'}")
+    print(f"Sentiment Model: {'[OK] Available' if model_info['sentiment_model_available'] else '[FALLBACK] Using fallback'}")
+    print(f"Stance Model: {'[OK] Available' if model_info['stance_model_available'] else '[FALLBACK] Using fallback'}")
     
     return result
 

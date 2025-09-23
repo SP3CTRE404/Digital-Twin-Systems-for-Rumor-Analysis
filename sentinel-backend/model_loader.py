@@ -13,14 +13,15 @@ from transformers import (
 
 
 def _resolve_model_path(model_name_env: str | None) -> str:
-    # Priority: explicit env path → provided name → fallback hardcoded path
+    # Priority: explicit env path → provided name → relative path from project root
     explicit_path = os.getenv("MODEL_LOCAL_PATH")
     if explicit_path:
         return explicit_path
     if model_name_env:
         return model_name_env
-    # User-specified local path (with spaces handled). Update if needed.
-    return r"C:\Users\harsh\OneDrive\Desktop\New folder\models"
+    # Use relative path from the backend directory
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base_dir, "models")
 
 
 def load_model(model_name: str | None) -> Dict[str, Any]:

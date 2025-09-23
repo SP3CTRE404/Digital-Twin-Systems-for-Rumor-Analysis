@@ -1,7 +1,6 @@
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
 # path to your checkpoint
-model_path = r"C:\Users\harsh\OneDrive\Desktop\m1\results\pretraining\checkpoint-5588"
 
 # load tokenizer from base T5 (checkpoint lacks tokenizer files)
 tokenizer = AutoTokenizer.from_pretrained("t5-small")
