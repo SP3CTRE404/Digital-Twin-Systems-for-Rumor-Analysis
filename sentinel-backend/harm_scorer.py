@@ -15,13 +15,24 @@ class EnhancedHarmfulnessScorer:
     Uses both sentiment and stance detection models as described in RSK-T5 paper
     """
     
-    def __init__(self, 
-                 sentiment_model_path="../models/sentiment_model_3050",
-                 stance_model_path="../models/stance_model_3050"):
+    def __init__(self, sentiment_model_path=None, stance_model_path=None):
         """Initialize with trained sentiment and stance models"""
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print(f"Using device: {self.device}")
         
+        if sentiment_model_path is None or stance_model_path is None:
+            raise ValueError("Both sentiment_model_path and stance_model_path must be provided")
+        
+        # Log paths for debugging
+        print(f"Initializing HarmfulnessScorer with:")
+        print(f"- Sentiment model path: {sentiment_model_path}")
+        print(f"- Stance model path: {stance_model_path}")
+        
+        if not os.path.exists(sentiment_model_path):
+            raise ValueError(f"Sentiment model path does not exist: {sentiment_model_path}")
+        if not os.path.exists(stance_model_path):
+            raise ValueError(f"Stance model path does not exist: {stance_model_path}")
+            
         # Load sentiment model
         self.sentiment_model = None
         if os.path.exists(sentiment_model_path):

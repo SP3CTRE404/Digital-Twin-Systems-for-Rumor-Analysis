@@ -152,9 +152,27 @@ def create_app() -> Flask:
 
             # M2: Harm Engine via EnhancedHarmfulnessScorer (uses stance + sentiment models)
             try:
+                # Get absolute paths for models
+                base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                sentiment_path = os.path.join(base_dir, "models", "sentiment_model_3050")
+                stance_path = os.path.join(base_dir, "models", "stance_model_3050")
+                
+                # Debug path resolution
+                print(f"Base directory: {base_dir}")
+                print(f"Sentiment model path: {sentiment_path}")
+                print(f"Stance model path: {stance_path}")
+                print(f"Sentiment model exists: {os.path.exists(sentiment_path)}")
+                print(f"Stance model exists: {os.path.exists(stance_path)}")
+                
+                if not os.path.exists(sentiment_path):
+                    raise ValueError(f"Sentiment model not found at: {sentiment_path}")
+                if not os.path.exists(stance_path):
+                    raise ValueError(f"Stance model not found at: {stance_path}")
+                
+                # Initialize scorer with absolute paths
                 scorer = EnhancedHarmfulnessScorer(
-                    sentiment_model_path=os.getenv("SENTIMENT_MODEL_PATH"),
-                    stance_model_path=os.getenv("STANCE_MODEL_PATH"),
+                    sentiment_model_path=sentiment_path,
+                    stance_model_path=stance_path,
                 )
             except Exception as e:
                 return {"error": f"Failed to initialize harm scorer: {str(e)}"}, 500
