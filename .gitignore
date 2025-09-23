@@ -28,6 +28,7 @@ env/
 *.tmp
 *.swp
 *.bak
+.tmp.driveupload
 
 # Data files (especially large ones)
 data/*.parquet
