@@ -1,101 +1,111 @@
-import React, { useMemo, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
-import RiskChart from '../components/RiskChart.jsx'
-import RumorGraph from '../components/RumorGraph.jsx'
-import AnalysisResults from '../components/AnalysisResults.jsx'
+import React, { useState } from 'react';
+import { analyzeRumor } from '../api/api.jsx'; // Assuming your API call function is here
 
-export default function Dashboard() {
-  const { state } = useLocation()
-  const navigate = useNavigate()
-  const { analysis, simulation: result } = state || {}
+// Import UI Components
+import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card.jsx';
+import { Skeleton } from '../components/ui/Skeleton.jsx';
+import AnalysisResults from '../components/AnalysisResults.jsx';
 
-  if (!analysis || !result) {
-    return <div className="p-10">No analysis results. <button onClick={() => navigate('/')} className="text-blue-500 hover:underline">Go back</button> and analyze a rumor.</div>
-  }
+const Dashboard = () => {
+  const [rumorText, setRumorText] = useState('');
+  const [analysis, setAnalysis] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const harm = result?.harm?.harmfulness_score ?? result?.harm_score ?? analysis.harm_score
-  const graph = result?.graph || { nodes: [{ id: 0, stance: 'comment' }], edges: [] }
-  const timeline = result?.timeline || []
-  const [stepIdx, setStepIdx] = useState(timeline.length ? timeline.length - 1 : 0)
-  const currentTime = useMemo(() => (timeline[stepIdx]?.time ?? null), [timeline, stepIdx])
+  const handleAnalysis = async () => {
+    if (!rumorText.trim()) {
+      setError('Please enter a rumor to analyze.');
+      return;
+    }
+    
+    setIsLoading(true);
+    setError(null);
+    setAnalysis(null);
 
-  const filteredGraph = useMemo(() => {
-    const g = graph || { nodes: [], edges: [] }
-    if (currentTime == null) return g
-    const nodes = (g.nodes || []).filter(n => typeof n.posted_time === 'number' ? n.posted_time <= currentTime : true)
-    const allowed = new Set(nodes.map(n => n.id))
-    const edges = (g.edges || []).filter(e => allowed.has(e.source) && allowed.has(e.target))
-    return { nodes, edges }
-  }, [graph, currentTime])
-  const comps = result?.harm?.components || {}
-  const sentimentDist = comps?.sentiment_distribution || {}
-  const stanceDist = comps?.stance_distribution || {}
-  const dominantSentiment = Object.keys(sentimentDist).sort((a, b) => sentimentDist[b] - sentimentDist[a])[0]
-  const dominantStance = Object.keys(stanceDist).sort((a, b) => stanceDist[b] - stanceDist[a])[0]
+    try {
+      const result = await analyzeRumor({ rumor_text: rumorText });
+      setAnalysis(result);
+    } catch (err) {
+      setError('Failed to analyze the rumor. The server might be down or an error occurred. Please try again.');
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
-    <div className="p-10">
-      <h1 className="text-2xl font-bold mb-4">Rumor Analysis & Simulation</h1>
+    <div className="min-h-screen bg-gray-50 text-gray-800 p-4 sm:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto">
+        <header className="mb-8">
+          <h1 className="text-4xl font-bold text-gray-900">Digital Twin: Rumor Threat Analysis</h1>
+          <p className="text-lg text-gray-600 mt-2">
+            Enter a rumor or suspicious text below to simulate its potential spread and assess its harmfulness score.
+          </p>
+        </header>
 
-      <AnalysisResults analysis={analysis} />
-
-      <div className="grid grid-cols-2 gap-6 mt-6">
-        <RiskChart result={{ ...result, harm_score: harm }} />
-        <RumorGraph graph={filteredGraph} harm={Number(harm || 0)} />
-      </div>
-
-      {timeline.length > 0 && (
-        <div className="mt-6 bg-white p-4 rounded shadow">
-          <h2 className="font-bold mb-2">Cascade Timeline</h2>
-          <div className="text-sm text-gray-700 mb-2">Steps: {timeline.length}</div>
-          <input
-            type="range"
-            min={0}
-            max={Math.max(0, timeline.length - 1)}
-            value={stepIdx}
-            onChange={(e) => setStepIdx(parseInt(e.target.value, 10))}
-            style={{ width: '100%' }}
-          />
-          <div className="text-xs text-gray-600 mt-1">t = {currentTime ?? 0}</div>
-          <div className="mt-2 text-xs font-mono overflow-auto" style={{ maxHeight: 140 }}>
-            {timeline.map((snap, i) => (
-              <div key={i}>t={snap.time}: size={snap.cascade_size}</div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 gap-6 mt-6">
-        <div className="bg-white p-4 rounded shadow">
-          <h2 className="font-bold mb-2">Sentiment</h2>
-          {dominantSentiment && (
-            <div className="mb-2 text-sm text-gray-700">Dominant: <strong>{dominantSentiment}</strong></div>
+        <main>
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle>Rumor Input</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <textarea
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                rows="4"
+                placeholder="e.g., 'Scientists have discovered a new species of glowing mushrooms...'"
+                value={rumorText}
+                onChange={(e) => setRumorText(e.target.value)}
+                disabled={isLoading}
+              />
+              <button
+                onClick={handleAnalysis}
+                className="mt-4 w-full sm:w-auto px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Analyzing...' : 'Analyze Threat'}
+              </button>
+            </CardContent>
+          </Card>
+          
+          {error && (
+            <Card className="border-red-500 bg-red-50">
+              <CardHeader>
+                <CardTitle className="text-red-700">An Error Occurred</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-red-600">{error}</p>
+              </CardContent>
+            </Card>
           )}
-          <pre className="text-xs overflow-auto" style={{ maxHeight: 160 }}>
-            {JSON.stringify(sentimentDist, null, 2)}
-          </pre>
-        </div>
-        <div className="bg-white p-4 rounded shadow">
-          <h2 className="font-bold mb-2">Stance</h2>
-          {dominantStance && (
-            <div className="mb-2 text-sm text-gray-700">Dominant: <strong>{dominantStance}</strong></div>
-          )}
-          <pre className="text-xs overflow-auto" style={{ maxHeight: 160 }}>
-            {JSON.stringify(stanceDist, null, 2)}
-          </pre>
-        </div>
-      </div>
 
-      {result?.harm?.components && (
-        <div className="mt-6 bg-white p-4 rounded shadow">
-          <h2 className="font-bold mb-2">Components</h2>
-          <pre className="text-xs overflow-auto" style={{ maxHeight: 240 }}>
-            {JSON.stringify(result.harm.components, null, 2)}
-          </pre>
-        </div>
-      )}
+          {isLoading && <LoadingSkeleton />}
+          {analysis && !isLoading && <AnalysisResults data={analysis} />}
+        </main>
+      </div>
     </div>
-  )
-}
+  );
+};
 
+// A skeleton component to show while data is loading
+const LoadingSkeleton = () => (
+  <div>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <Card>
+        <CardHeader><Skeleton className="h-6 w-3/4" /></CardHeader>
+        <CardContent><Skeleton className="h-24 w-full" /></CardContent>
+      </Card>
+      <Card>
+        <CardHeader><Skeleton className="h-6 w-3/4" /></CardHeader>
+        <CardContent><Skeleton className="h-24 w-full" /></CardContent>
+      </Card>
+      <Card>
+        <CardHeader><Skeleton className="h-6 w-3/4" /></CardHeader>
+        <CardContent><Skeleton className="h-24 w-full" /></CardContent>
+      </Card>
+    </div>
+  </div>
+);
+
+
+export default Dashboard;
 

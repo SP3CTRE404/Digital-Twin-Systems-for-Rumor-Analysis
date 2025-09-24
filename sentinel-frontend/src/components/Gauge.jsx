@@ -1,49 +1,54 @@
-import React from 'react'
+import React from 'react';
 
-export default function Gauge({ value = 0.5, label = 'Score' }) {
-  const clamped = Math.max(0, Math.min(1, value))
-  const size = 180
-  const stroke = 16
-  const r = (size - stroke) / 2
-  const cx = size / 2
-  const cy = size / 2
+const Gauge = ({ value = 0 }) => {
+  const score = Math.max(0, Math.min(100, Math.round(value * 100)));
+  const circumference = 2 * Math.PI * 45; // Circle radius is 45
+  const offset = circumference - (score / 100) * circumference;
 
-  const startAngle = Math.PI
-  const endAngle = Math.PI * (1 - clamped)
+  const getColor = (val) => {
+    if (val > 75) return '#ef4444'; // Red
+    if (val > 40) return '#f59e0b'; // Amber
+    return '#22c55e'; // Green
+  };
 
-  const startX = cx + r * Math.cos(startAngle)
-  const startY = cy + r * Math.sin(startAngle)
-  const endX = cx + r * Math.cos(endAngle)
-  const endY = cy + r * Math.sin(endAngle)
-
-  const largeArc = 0
-
-  const arcPath = `M ${startX} ${startY} A ${r} ${r} 0 ${largeArc} 1 ${endX} ${endY}`
+  const color = getColor(score);
 
   return (
-    <div style={{ background: '#0b0f14', padding: 12, borderRadius: 8, color: '#fff' }}>
-      <svg width={size} height={size / 2} viewBox={`0 0 ${size} ${size / 2}`}>
-        <path
-          d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
-          fill="none"
-          stroke="#223043"
-          strokeWidth={stroke}
-          strokeLinecap="round"
+    <div className="relative flex items-center justify-center w-48 h-48">
+      <svg className="w-full h-full" viewBox="0 0 100 100">
+        {/* Background Circle */}
+        <circle
+          className="text-gray-200"
+          strokeWidth="10"
+          stroke="currentColor"
+          fill="transparent"
+          r="45"
+          cx="50"
+          cy="50"
         />
-        <path
-          d={arcPath}
-          fill="none"
-          stroke="#3b82f6"
-          strokeWidth={stroke}
+        {/* Progress Circle */}
+        <circle
+          strokeWidth="10"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
           strokeLinecap="round"
+          transform="rotate(-90 50 50)"
+          stroke={color}
+          fill="transparent"
+          r="45"
+          cx="50"
+          cy="50"
+          style={{ transition: 'stroke-dashoffset 0.5s ease-in-out' }}
         />
-        <circle cx={endX} cy={endY} r={stroke / 2} fill="#3b82f6" />
       </svg>
-      <div style={{ textAlign: 'center', marginTop: 8 }}>
-        {label}: {(clamped * 100).toFixed(1)}%
+      <div className="absolute flex flex-col items-center justify-center">
+        <span className="text-4xl font-bold" style={{ color }}>
+          {score}
+        </span>
+        <span className="text-sm text-gray-500">Risk Score</span>
       </div>
     </div>
-  )
-}
+  );
+};
 
-
+export default Gauge;

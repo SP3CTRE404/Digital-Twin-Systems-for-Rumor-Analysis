@@ -1,21 +1,21 @@
 """
-AI-Powered realistic comment section simulator for a digital twin system.
+Advanced, AI-Powered realistic comment section simulator for a digital twin system.
 This module uses a large language model to generate an entire, coherent 
-conversation thread based on an initial rumor.
+conversation thread based on an initial rumor using a single API call.
 """
 from typing import Dict, List
 import os
 import json
 import requests
 
-class AIConversationSimulator:
+class AdvancedSimulator:
     """
     Generates a realistic, multi-comment conversation thread using a single,
     powerful API call to a large language model.
     """
 
     def __init__(self):
-        """Initializes the AI Conversation Simulator."""
+        """Initializes the Advanced AI Conversation Simulator."""
         self.api_key = os.getenv('OPENAI_API_KEY')
         self.api_url = "https://api.openai.com/v1/chat/completions"
         
@@ -23,7 +23,7 @@ class AIConversationSimulator:
             print("⚠️ WARNING: OPENAI_API_KEY environment variable not set.")
             print("The simulator will not be able to generate comments.")
         else:
-            print("✅ AI Conversation Simulator initialized successfully.")
+            print("✅ Advanced AI Simulator initialized successfully.")
 
     def generate_thread(self, rumor_text: str, num_comments: int = 10, topic_context: str = "a breaking news event") -> List[Dict]:
         """
@@ -32,8 +32,7 @@ class AIConversationSimulator:
         Args:
             rumor_text (str): The initial rumor to seed the conversation.
             num_comments (int): The desired number of comments in the thread.
-            topic_context (str): A brief description of the rumor's context 
-                                 (e.g., 'celebrity gossip', 'political news').
+            topic_context (str): A brief description of the rumor's context.
 
         Returns:
             List[Dict]: A list of comment dictionaries, or an empty list if generation fails.
@@ -42,17 +41,17 @@ class AIConversationSimulator:
             print("❌ Error: Cannot generate comments without an API key.")
             return []
 
-        # The core prompt that instructs the AI to generate a full conversation.
-        # It asks for a JSON output to ensure the response is structured and easy to parse.
         system_prompt = f"""
         You are an advanced simulator of social media conversations. Your task is to create a realistic comment thread in response to a rumor.
 
         RULES:
-        1.  Generate a JSON array containing exactly {num_comments} comment objects.
-        2.  The conversation should be dynamic and coherent. Comments should realistically reply to or reference the original rumor.
-        3.  Simulate a variety of user personas: supporters, deniers, skeptics asking for proof, and neutral observers.
-        4.  Each JSON object in the array MUST have the following keys: "username", "user_type" (e.g., 'supporter', 'denier', 'skeptic', 'neutral'), "comment_text", and "stance" ('support', 'deny', 'query', 'comment').
-        5.  The tone should match the topic context: '{topic_context}'.
+        1.  Your entire response MUST be a single JSON object.
+        2.  The JSON object must have a single root key named "comments".
+        3.  The value of "comments" must be a JSON array containing exactly {num_comments} comment objects.
+        4.  The conversation should be dynamic and coherent. Comments should realistically react to the original rumor or each other.
+        5.  Simulate a variety of user personas: supporters, deniers, skeptics asking for proof, and neutral observers.
+        6.  Each comment object in the array MUST have the following keys: "username", "user_type" (e.g., 'supporter', 'denier', 'skeptic', 'neutral'), "comment_text", and "stance" ('support', 'deny', 'query', 'comment').
+        7.  The tone should match the topic context: '{topic_context}'.
         """
 
         messages = [
@@ -65,7 +64,6 @@ class AIConversationSimulator:
             "Authorization": f"Bearer {self.api_key}"
         }
 
-        # Requesting JSON mode from the API for reliable output
         payload = {
             "model": "gpt-4o",
             "messages": messages,
@@ -78,57 +76,50 @@ class AIConversationSimulator:
 
         try:
             response = requests.post(self.api_url, headers=headers, json=payload, timeout=90)
+            response.raise_for_status()  # Will raise an HTTPError for bad responses (4xx or 5xx)
+
+            print("✅ AI response received successfully.")
+            response_data = response.json()
+            content_string = response_data.get('choices', [{}])[0].get('message', {}).get('content', '{}')
             
-            if response.status_code == 200:
-                print("✅ AI response received successfully.")
-                response_data = response.json()
-                # The actual content is a JSON string within the response, which we need to parse.
-                content_string = response_data.get('choices', [{}])[0].get('message', {}).get('content', '{}')
-                
-                # The content might be inside a root key, like {"comments": [...]}. We need to find the list.
-                parsed_content = json.loads(content_string)
-                
-                if isinstance(parsed_content, dict):
-                    # Find the key that holds the list of comments
-                    for key, value in parsed_content.items():
-                        if isinstance(value, list):
-                            print(f"✅ Successfully parsed {len(value)} comments.")
-                            return value
-                
-                print("❌ Error: Parsed JSON does not contain a list of comments.")
-                return []
+            parsed_content = json.loads(content_string)
+            
+            # Directly access the "comments" key as requested in the prompt
+            comment_list = parsed_content.get("comments")
 
+            if comment_list and isinstance(comment_list, list):
+                print(f"✅ Successfully parsed {len(comment_list)} comments.")
+                return comment_list
             else:
-                print(f"❌ API Error: {response.status_code} - {response.text}")
+                print("❌ Error: Parsed JSON does not contain a 'comments' list.")
+                print(f"   Received content: {content_string}")
                 return []
 
+        except requests.exceptions.HTTPError as e:
+            print(f"❌ API Error: {e.response.status_code} - {e.response.text}")
+            return []
         except requests.exceptions.RequestException as e:
             print(f"❌ Network Error: Failed to connect to API. {e}")
             return []
         except json.JSONDecodeError:
-            print(f"❌ Error: Failed to decode the AI's JSON response. Response was: {content_string}")
+            print(f"❌ Error: Failed to decode the AI's JSON response. Raw response was: {content_string}")
             return []
         except Exception as e:
             print(f"❌ An unexpected error occurred: {e}")
             return []
 
-
 # --- Example Usage ---
 if __name__ == "__main__":
-    # The rumor you want to generate a comment section for.
-    input_rumor = "Sources are reporting that the city's main bridge will be closed for emergency repairs for the next three days, starting tomorrow at 5 AM."
+    input_rumor = "Breaking: Scientists have discovered a new species of glowing mushrooms in the Amazon that can power a small lightbulb for over a week."
 
-    # Initialize the simulator.
-    simulator = AIConversationSimulator()
+    simulator = AdvancedSimulator()
 
-    # Generate the conversation thread.
     comment_thread = simulator.generate_thread(
         rumor_text=input_rumor, 
         num_comments=8, 
-        topic_context="a local city news announcement"
+        topic_context="a surprising scientific discovery"
     )
 
-    # Display the generated comment section.
     if comment_thread:
         print("\n--- 🤖 Generated Comment Section 🤖 ---\n")
         for i, comment in enumerate(comment_thread, 1):

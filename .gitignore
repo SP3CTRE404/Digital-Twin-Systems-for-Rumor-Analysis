@@ -84,3 +84,5 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+sentinel-backend/results
