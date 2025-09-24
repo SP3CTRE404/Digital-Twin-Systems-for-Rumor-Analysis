@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
-
 import random
 import networkx as nx
 import os
+import pandas as pd
+from simulation.comment_generator import generate_conversation
+import matplotlib.pyplot as plt
+import seaborn as sns
 try:
     from harm_scorer import EnhancedHarmfulnessScorer
 except Exception:
@@ -91,12 +94,31 @@ def run_digital_twin(
     """
     rng = random.Random(42)
     g = nx.erdos_renyi_graph(num_nodes, edge_prob, seed=42)
-    # Node biases: support/deny prior
+    
+    # Enhanced node attributes
+    user_types = ["regular", "influencer", "skeptic", "amplifier"]
+    stances = ["support", "deny", "query", "neutral"]
+    
     for n in g.nodes:
-        g.nodes[n]["bias"] = rng.choice(["support", "deny", "comment"])  # coarse priors
-
+        g.nodes[n].update({
+            "user_type": rng.choice(user_types),
+            "stance_bias": rng.choice(stances),
+            "influence_score": rng.uniform(0.1, 1.0),
+            "activity_level": rng.uniform(0.2, 0.8)
+        })
+    
+    # Initialize active nodes and timeline
     active: Set[int] = {0}
     timeline_nodes: List[List[int]] = [sorted(active)]
+    
+    # Create scorer if available
+    scorer = None
+    if EnhancedHarmfulnessScorer is not None:
+        try:
+            scorer = EnhancedHarmfulnessScorer()
+        except Exception as e:
+            print(f"Failed to initialize harm scorer: {e}")
+            scorer = None
 
     comments_over_time: List[List[Dict[str, Any]]] = []
     # Initialize scorer if available
