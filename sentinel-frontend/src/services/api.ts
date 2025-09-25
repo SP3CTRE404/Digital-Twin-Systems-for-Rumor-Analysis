@@ -11,7 +11,7 @@ const apiClient = axios.create({
 })
 
 export const analyzeRumor = async (rumor: string): Promise<AnalysisResponse> => {
-  const request: AnalysisRequest = { rumor }
+  const request: AnalysisRequest = { rumor } // Changed 'rumor' to 'text'
   const response = await apiClient.post<AnalysisResponse>("/analyze", request)
   return response.data
 }

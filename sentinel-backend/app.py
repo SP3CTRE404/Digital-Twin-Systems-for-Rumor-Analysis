@@ -108,7 +108,7 @@ def create_app() -> Flask:
             if not payload:
                 return {"error": "Invalid JSON payload"}, 400
                 
-            text = payload.get("text", "").strip()
+            text = payload.get("rumor", "").strip()
             if not text:
                 return {"error": "Missing or empty 'text' field"}, 400
 

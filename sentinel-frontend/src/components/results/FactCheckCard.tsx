@@ -6,6 +6,27 @@ interface FactCheckCardProps {
 }
 
 export function FactCheckCard({ factCheckData }: FactCheckCardProps) {
+  if (!factCheckData || !factCheckData.status) {
+    return (
+      <Card className="p-6 bg-gray-500/10 border-gray-500/30 border-2">
+        <div className="space-y-4">
+          <div className="flex items-center space-x-3">
+            <div className="h-10 w-10 rounded-full bg-gray-500/20 flex items-center justify-center">
+              <span className="text-lg font-bold text-gray-500">?</span>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-500">Fact Check: Loading...</h3>
+              <p className="text-sm text-muted-foreground">Verification Status</p>
+            </div>
+          </div>
+          <div className="pl-13">
+            <p className="text-foreground leading-relaxed">Fact check data is being processed...</p>
+          </div>
+        </div>
+      </Card>
+    )
+  }
+
   const getStatusConfig = (status: FactCheck["status"]) => {
     switch (status) {
       case "Verified":
@@ -67,7 +88,9 @@ export function FactCheckCard({ factCheckData }: FactCheckCardProps) {
         </div>
 
         <div className="pl-13">
-          <p className="text-foreground leading-relaxed">{factCheckData.details}</p>
+          <p className="text-foreground leading-relaxed">
+            {factCheckData.details || "No additional details available."}
+          </p>
         </div>
       </div>
     </Card>
