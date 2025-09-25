@@ -1,130 +1,100 @@
-"""
-Advanced, AI-Powered realistic comment section simulator for a digital twin system.
-This module uses a large language model to generate an entire, coherent 
-conversation thread based on an initial rumor using a single API call.
-"""
 from typing import Dict, List
 import os
 import json
 import requests
+import random
+from dotenv import load_dotenv
+from pathlib import Path
+
+dotenv_path = Path(__file__).resolve().parent.parent / '.env'
+load_dotenv(dotenv_path)
 
 class AdvancedSimulator:
-    """
-    Generates a realistic, multi-comment conversation thread using a single,
-    powerful API call to a large language model.
-    """
-
     def __init__(self):
-        """Initializes the Advanced AI Conversation Simulator."""
-        self.api_key = os.getenv('OPENAI_API_KEY')
-        self.api_url = "https://api.openai.com/v1/chat/completions"
+        self.api_key = os.getenv('GEMINI_API_KEY')
+        if not self.api_key:
+            raise ValueError("GEMINI_API_KEY environment variable not set. This is required.")
+       
+        self.api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={self.api_key}"
+
+    def generate_thread(self, rumor_text: str, topic_context: str = "a breaking news event") -> List[Dict]:
+        total_comments = 20
+
+        num_supporters = random.randint(1, total_comments - 2)
+        num_deniers = random.randint(1, total_comments - num_supporters - 1)
+        num_skeptics = total_comments - num_supporters - num_deniers
         
-        if not self.api_key:
-            print("⚠️ WARNING: OPENAI_API_KEY environment variable not set.")
-            print("The simulator will not be able to generate comments.")
-        else:
-            print("✅ Advanced AI Simulator initialized successfully.")
-
-    def generate_thread(self, rumor_text: str, num_comments: int = 10, topic_context: str = "a breaking news event") -> List[Dict]:
-        """
-        Generates a full, realistic comment thread about a given rumor.
-
-        Args:
-            rumor_text (str): The initial rumor to seed the conversation.
-            num_comments (int): The desired number of comments in the thread.
-            topic_context (str): A brief description of the rumor's context.
-
-        Returns:
-            List[Dict]: A list of comment dictionaries, or an empty list if generation fails.
-        """
-        if not self.api_key:
-            print("❌ Error: Cannot generate comments without an API key.")
-            return []
-
         system_prompt = f"""
-        You are an advanced simulator of social media conversations. Your task is to create a realistic comment thread in response to a rumor.
-
+        You are an advanced simulator of a social media comment section. Your task is to create a realistic and coherent conversation thread based on a rumor.
         RULES:
-        1.  Your entire response MUST be a single JSON object.
-        2.  The JSON object must have a single root key named "comments".
-        3.  The value of "comments" must be a JSON array containing exactly {num_comments} comment objects.
-        4.  The conversation should be dynamic and coherent. Comments should realistically react to the original rumor or each other.
-        5.  Simulate a variety of user personas: supporters, deniers, skeptics asking for proof, and neutral observers.
-        6.  Each comment object in the array MUST have the following keys: "username", "user_type" (e.g., 'supporter', 'denier', 'skeptic', 'neutral'), "comment_text", and "stance" ('support', 'deny', 'query', 'comment').
-        7.  The tone should match the topic context: '{topic_context}'.
-        """
+        1.  Your entire output MUST be a single, valid JSON object that adheres to the provided schema.
+        2.  The conversation must be dynamic. Comments should reply to the original post or to each other, creating a natural flow. Do not just list disconnected opinions.
+        3.  You MUST simulate EXACTLY the following distribution of user stances:
+            - **{num_supporters} people IN FAVOR of the rumor.** Their "user_type" should be 'supporter' and "stance" should be 'support'.
+            - **{num_deniers} people AGAINST the rumor.** Their "user_type" should be 'denier' and "stance" should be 'deny'.
+            - **{num_skeptics} NEUTRAL people asking for facts or sources.** Their "user_type" should be 'skeptic' and "stance" should be 'query'.
+        4.  The tone of the conversation should match the topic context: '{topic_context}'.
+        """ 
+        user_prompt = f"Generate the comment thread for this rumor: \"{rumor_text}\""
 
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Generate the comment thread for this rumor: \"{rumor_text}\""}
-        ]
+        headers = { "Content-Type": "application/json" }
 
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.api_key}"
+        json_schema = {
+            "type": "OBJECT",
+            "properties": {
+                "comments": {
+                    "type": "ARRAY",
+                    "items": {
+                        "type": "OBJECT",
+                        "properties": {
+                            "username": {"type": "STRING"},
+                            "user_type": {"type": "STRING"},
+                            "comment_text": {"type": "STRING"},
+                            "stance": {"type": "STRING"}
+                        },
+                        "required": ["username", "user_type", "comment_text", "stance"]
+                    }
+                }
+            },
+            "required": ["comments"]
         }
 
         payload = {
-            "model": "gpt-4o",
-            "messages": messages,
-            "response_format": {"type": "json_object"},
-            "temperature": 0.8,
-            "max_tokens": 2048,
+            "contents": [{"parts": [{"text": user_prompt}]}],
+            "systemInstruction": {"parts": [{"text": system_prompt}]},
+            "generationConfig": {
+                "responseMimeType": "application/json",
+                "responseSchema": json_schema,
+                "temperature": 0.9,
+                "maxOutputTokens": 3000,
+            }
         }
 
-        print(f"\n🚀 Sending request to AI for a thread of {num_comments} comments...")
-
+        print(f"\n🚀 Sending request to Gemini API for a thread of {total_comments} comments...")
+        print(f"   Distribution: {num_supporters} supporters, {num_deniers} deniers, {num_skeptics} skeptics.")
+        
         try:
-            response = requests.post(self.api_url, headers=headers, json=payload, timeout=90)
-            response.raise_for_status()  # Will raise an HTTPError for bad responses (4xx or 5xx)
+            response = requests.post(self.api_url, headers=headers, json=payload, timeout=120)
+            response.raise_for_status()
 
-            print("✅ AI response received successfully.")
-            response_data = response.json()
-            content_string = response_data.get('choices', [{}])[0].get('message', {}).get('content', '{}')
-            
-            parsed_content = json.loads(content_string)
-            
-            # Directly access the "comments" key as requested in the prompt
-            comment_list = parsed_content.get("comments")
+            print("✅ AI response received from Gemini.")
+            # Updated response parsing for Gemini
+            content_string = response.json()['candidates'][0]['content']['parts'][0]['text']
+            comment_list = json.loads(content_string).get("comments", [])
 
-            if comment_list and isinstance(comment_list, list):
+            if isinstance(comment_list, list) and comment_list:
                 print(f"✅ Successfully parsed {len(comment_list)} comments.")
                 return comment_list
             else:
-                print("❌ Error: Parsed JSON does not contain a 'comments' list.")
-                print(f"   Received content: {content_string}")
+                print("❌ Warning: Gemini returned a valid but empty or malformed 'comments' list.")
                 return []
 
         except requests.exceptions.HTTPError as e:
             print(f"❌ API Error: {e.response.status_code} - {e.response.text}")
-            return []
         except requests.exceptions.RequestException as e:
             print(f"❌ Network Error: Failed to connect to API. {e}")
-            return []
         except json.JSONDecodeError:
-            print(f"❌ Error: Failed to decode the AI's JSON response. Raw response was: {content_string}")
-            return []
-        except Exception as e:
-            print(f"❌ An unexpected error occurred: {e}")
-            return []
-
-# --- Example Usage ---
-if __name__ == "__main__":
-    input_rumor = "Breaking: Scientists have discovered a new species of glowing mushrooms in the Amazon that can power a small lightbulb for over a week."
-
-    simulator = AdvancedSimulator()
-
-    comment_thread = simulator.generate_thread(
-        rumor_text=input_rumor, 
-        num_comments=8, 
-        topic_context="a surprising scientific discovery"
-    )
-
-    if comment_thread:
-        print("\n--- 🤖 Generated Comment Section 🤖 ---\n")
-        for i, comment in enumerate(comment_thread, 1):
-            print(f"#{i} User: {comment.get('username', 'N/A')} ({comment.get('user_type', 'N/A')})")
-            print(f"   Stance: {comment.get('stance', 'N/A')}")
-            print(f"   Comment: {comment.get('comment_text', 'N/A')}\n")
-    else:
-        print("\nCould not generate the comment thread. Please check your API key and network connection.")
+            print("❌ JSON Decode Error: Failed to parse the AI's response.")
+        except (KeyError, IndexError):
+            print("❌ Response Structure Error: Unexpected format from Gemini API.")
+        return []
