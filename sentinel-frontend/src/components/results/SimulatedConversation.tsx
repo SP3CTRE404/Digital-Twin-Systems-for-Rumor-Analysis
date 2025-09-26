@@ -7,8 +7,10 @@ interface SimulatedConversationProps {
 }
 
 export function SimulatedConversation({ comments }: SimulatedConversationProps) {
+  const safeComments = comments || []
+
   const getStanceStats = (comments: Comment[]) => {
-    const stats = comments.reduce(
+    const stats = safeComments.reduce(
       (acc, comment) => {
         acc[comment.stance] = (acc[comment.stance] || 0) + 1
         return acc
@@ -19,7 +21,7 @@ export function SimulatedConversation({ comments }: SimulatedConversationProps) 
     return stats
   }
 
-  const stats = getStanceStats(comments)
+  const stats = getStanceStats(safeComments)
 
   return (
     <Card className="p-6">
@@ -28,7 +30,7 @@ export function SimulatedConversation({ comments }: SimulatedConversationProps) 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-foreground">Simulated Conversation Thread</h3>
-            <div className="text-sm text-muted-foreground">{comments.length} comments</div>
+            <div className="text-sm text-muted-foreground">{safeComments.length} comments</div>
           </div>
 
           {/* Stance distribution */}
@@ -50,8 +52,8 @@ export function SimulatedConversation({ comments }: SimulatedConversationProps) 
 
         {/* Comments container */}
         <div className="max-h-96 overflow-y-auto space-y-3 pr-2">
-          {comments.length > 0 ? (
-            comments.map((comment, index) => <CommentCard key={index} comment={comment} />)
+          {safeComments.length > 0 ? (
+            safeComments.map((comment, index) => <CommentCard key={index} comment={comment} />)
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <div className="h-12 w-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">

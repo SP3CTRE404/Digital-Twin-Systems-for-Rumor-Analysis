@@ -100,6 +100,9 @@ def create_app() -> Flask:
     def health() -> tuple[dict, int]:
         return {"status": "ok"}, 200
 
+    # Key sections of app.py that need to be fixed for factcheck to work
+
+# 1. Fix the analyze endpoint - the main issue is in how factcheck is called
     @app.post("/analyze")
     def analyze() -> tuple[dict, int]:
         """Analyze a rumor with optional comments for harmfulness"""
@@ -110,16 +113,16 @@ def create_app() -> Flask:
                 
             text = payload.get("rumor", "").strip()
             if not text:
-                return {"error": "Missing or empty 'text' field"}, 400
-
+                return {"error": "Missing or empty 'rumor' field"}, 400
+    
             comments = payload.get("comments") or []
             if not isinstance(comments, list):
                 return {"error": "Comments must be an array"}, 400
-
+    
             scorer = app.config.get("HARM_SCORER")
             if not scorer:
                 return {"error": "Harm scorer not available"}, 500
-
+    
             # If no comments provided, generate them using AI
             if not comments:
                 comment_gen = app.config.get("COMMENT_GENERATOR")
@@ -148,25 +151,31 @@ def create_app() -> Flask:
                 else:
                     # Fallback to analyzing just the rumor text
                     comments = [{"text": text, "user.handle": "seed_user"}]
-
+    
             # Analyze harmfulness
             try:
                 harm_result = scorer.analyze_conversation_thread(comments, "rumor_thread")
                 harm_score = float(harm_result.get("harmfulness_score", 0.0))
             except Exception as e:
                 return {"error": f"Failed to analyze harmfulness: {str(e)}"}, 500
-
-            # Get veracity score
+    
+            # Get veracity score - FIX: Call the function correctly
             try:
-                veracity_result = analyze_thread_veracity(text, [], api_key=os.getenv("GOOGLE_FACTCHECK_API_KEY"))
+                print(f"🔍 Starting fact-check for rumor: '{text[:100]}...'")
+                veracity_result = analyze_thread_veracity(
+                    rumor_text=text, 
+                    comments=comments, 
+                    api_key=os.getenv("CLAIMBUSTER_API_KEY")
+                )
                 veracity = veracity_result['rumor_veracity']['score']
+                print(f"✅ Fact-check complete. Veracity: {veracity:.3f}")
             except Exception as e:
-                print(f"Veracity check failed: {e}")
+                print(f"❌ Veracity check failed: {e}")
                 veracity = 0.5  # Default neutral veracity
-
+    
             # Calculate threat score: Harm * (1 - Veracity)
             threat = round(harm_score * (1.0 - veracity), 3)
-
+    
             return jsonify({
                 "rumor": text,
                 "generated_comments": len(comments) if comments else 0,
@@ -174,12 +183,17 @@ def create_app() -> Flask:
                 "harm": harm_result,
                 "harm_score": round(harm_score, 3),
                 "veracity_score": round(veracity, 3),
+                "veracity_details": veracity_result,  # Include full veracity analysis
                 "threat_score": threat,
             }), 200
             
         except Exception as e:
+            print(f"❌ Error in analyze endpoint: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return {"error": f"Internal server error: {str(e)}"}, 500
-
+    
+    # 2. Fix the simulate_digital_twin endpoint
     @app.post("/simulate_digital_twin")
     def simulate_digital_twin() -> tuple[dict, int]:
         """Run enhanced digital twin simulation with realistic comments"""
@@ -189,27 +203,44 @@ def create_app() -> Flask:
             seed_node = data.get("seed_node")
             steps = int(data.get("steps", 300))
             intervene_at = data.get("intervene_at")
-            veracity_score = float(data.get("veracity_score", 0.5))
-
+            
+            # FIX: Get veracity score using fact-check if not provided
+            veracity_score = data.get("veracity_score")
+            if veracity_score is None:
+                try:
+                    print(f"🔍 Fact-checking rumor for simulation: '{text[:100]}...'")
+                    veracity_result = analyze_thread_veracity(
+                        rumor_text=text,
+                        comments=[],  # No comments for initial fact-check
+                        api_key=os.getenv("CLAIMBUSTER_API_KEY")
+                    )
+                    veracity_score = float(veracity_result['rumor_veracity']['score'])
+                    print(f"✅ Fact-check complete. Using veracity: {veracity_score:.3f}")
+                except Exception as e:
+                    print(f"❌ Fact-check failed, using default: {e}")
+                    veracity_score = 0.5
+            else:
+                veracity_score = float(veracity_score)
+    
             # Get components
             G = app.config.get("DT_GRAPH")
             communities = app.config.get("DT_COMMS")
             scorer = app.config.get("HARM_SCORER")
             comment_gen = app.config.get("COMMENT_GENERATOR")
-
+    
             if G is None:
                 # Build fallback graph
                 G, communities = make_social_graph(n=500, m=3, community_frac=0.2, seed=123)
                 G = assign_user_profiles(G, communities)
-
+    
             # Choose seed node
             if seed_node is None:
                 out_degs = dict(G.out_degree())
                 sorted_nodes = sorted(out_degs.items(), key=lambda x: x[1], reverse=True)
                 seed_node = sorted_nodes[0][0] if sorted_nodes else random.choice(list(G.nodes()))
-
+    
             seed = data.get("seed", random.randint(0, 100000))
-
+    
             # Create simulation copy
             H = G.copy()
             sim = DigitalTwinSimulator(
@@ -218,7 +249,7 @@ def create_app() -> Flask:
                 base_virality=float(os.getenv("DT_BASE_VIRALITY", "0.25")),
                 seed=seed,
             )
-
+    
             # Seed the rumor
             sim.seed_rumor(seed_node, text, init_time=0.0, model_predictor=None)
             
@@ -232,23 +263,23 @@ def create_app() -> Flask:
                 mutation_prob=0.02,
                 max_steps=steps,
             )
-
+    
             # Calculate metrics
             sizes = cascade_size(timeline)
             peak_t = time_to_peak(timeline)
             Rt = compute_Rt(timeline)
-
+    
             # Generate realistic comments for final state if AI available
             final_comments = []
             harm_score = 0.0
             harm_result = {"harmfulness_score": 0.0}
-
+    
             # Get nodes that participated in spreading
             active_nodes = [
                 n for n, d in H.nodes(data=True)
                 if d.get("posted_time") is not None
             ]
-
+    
             if comment_gen and len(active_nodes) > 0:
                 print(f"Generating comments for {len(active_nodes)} active nodes...")
                 try:
@@ -274,12 +305,12 @@ def create_app() -> Flask:
                             # Update node with realistic data
                             H.nodes[node_id]["text"] = comment_data["text"]
                             H.nodes[node_id]["stance"] = comment_data["stance"]
-
+    
                     print(f"Generated {len(final_comments)} realistic comments")
                     
                 except Exception as e:
                     print(f"Comment generation failed: {e}")
-
+    
             # If no AI comments, create basic ones from active nodes
             if not final_comments and len(active_nodes) > 0:
                 for node_id in active_nodes:
@@ -289,7 +320,7 @@ def create_app() -> Flask:
                         "user.handle": f"user_{node_id}",
                         "stance": node_data.get("stance", "comment"),
                     })
-
+    
             # Calculate harm score using generated comments
             if scorer and final_comments:
                 try:
@@ -298,7 +329,7 @@ def create_app() -> Flask:
                 except Exception as e:
                     print(f"Harm analysis failed: {e}")
                     harm_score = 0.0
-
+    
             # Fallback harm calculation if scorer failed
             if harm_score == 0.0 and timeline:
                 harm_score = _calculate_fallback_harm(timeline[-1])
@@ -310,10 +341,10 @@ def create_app() -> Flask:
                         'cascade_size': timeline[-1].get('cascade_size', 0)
                     }
                 }
-
+    
             # Calculate threat score
             threat_score = round(float(harm_score) * (1.0 - veracity_score), 3)
-
+    
             return jsonify({
                 "rumor": text,
                 "summary": {
@@ -332,11 +363,12 @@ def create_app() -> Flask:
                 "veracity_score": round(veracity_score, 3),
                 "threat_score": threat_score,
             }), 200
-
+    
         except Exception as e:
             import traceback
-            traceback.print_exc()
             return {"error": f"Simulation failed: {str(e)}"}, 500
+        traceback.print_exc()
+
 
     def _calculate_fallback_harm(last_snapshot):
         """Calculate basic harm score from timeline data"""
